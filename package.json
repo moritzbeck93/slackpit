@@ -1,0 +1,45 @@
+{
+  "name": "slackpit",
+  "version": "0.1.0",
+  "description": "Slack message testing tool - like Mailpit but for Slack",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "slackpit": "dist/bin.js"
+  },
+  "scripts": {
+    "dev": "tsx src/bin.ts",
+    "build": "tsup",
+    "build:binary": "bun build src/bin.ts --compile --outfile dist/slackpit",
+    "build:release": "npm run build:css && npm run build:binary",
+    "build:css": "node -e \"const fs=require('fs');fs.writeFileSync('src/slackBlocksCss.ts','export default '+JSON.stringify(fs.readFileSync('node_modules/slack-blocks-to-jsx/dist/style.css','utf-8'))+';\\n')\"",
+    "start": "node dist/bin.js",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "slack",
+    "testing",
+    "development",
+    "mock",
+    "preview",
+    "mailpit"
+  ],
+  "author": "Zell",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.21.0",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5",
+    "slack-blocks-to-jsx": "^1.0.4"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "tsup": "^8.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.5.0"
+  }
+}

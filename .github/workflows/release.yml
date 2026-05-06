@@ -1,0 +1,118 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: macos-latest
+            target: darwin-arm64
+          - os: macos-13
+            target: darwin-x64
+          - os: ubuntu-latest
+            target: linux-x64
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install
+      - run: npm run build:release
+
+      - name: Rename binary
+        run: mv dist/slackpit dist/slackpit-${{ matrix.target }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: slackpit-${{ matrix.target }}
+          path: dist/slackpit-${{ matrix.target }}
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: slackpit-*
+          generate_release_notes: true
+
+  update-tap:
+    needs: release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: moritzbeck93/homebrew-tap
+          token: ${{ secrets.TAP_GITHUB_TOKEN }}
+
+      - name: Update formula
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+
+          curl -sL "https://github.com/moritzbeck93/slackpit/releases/download/v${VERSION}/slackpit-darwin-arm64" -o /tmp/slackpit-darwin-arm64
+          curl -sL "https://github.com/moritzbeck93/slackpit/releases/download/v${VERSION}/slackpit-darwin-x64" -o /tmp/slackpit-darwin-x64
+          curl -sL "https://github.com/moritzbeck93/slackpit/releases/download/v${VERSION}/slackpit-linux-x64" -o /tmp/slackpit-linux-x64
+
+          SHA_DARWIN_ARM64=$(shasum -a 256 /tmp/slackpit-darwin-arm64 | cut -d' ' -f1)
+          SHA_DARWIN_X64=$(shasum -a 256 /tmp/slackpit-darwin-x64 | cut -d' ' -f1)
+          SHA_LINUX_X64=$(shasum -a 256 /tmp/slackpit-linux-x64 | cut -d' ' -f1)
+
+          cat > Formula/slackpit.rb << EOF
+          class Slackpit < Formula
+            desc "Slack message testing tool for developers - like Mailpit but for Slack"
+            homepage "https://github.com/moritzbeck93/slackpit"
+            version "${VERSION}"
+            license "MIT"
+
+            on_macos do
+              if Hardware::CPU.arm?
+                url "https://github.com/moritzbeck93/slackpit/releases/download/v${VERSION}/slackpit-darwin-arm64"
+                sha256 "${SHA_DARWIN_ARM64}"
+              else
+                url "https://github.com/moritzbeck93/slackpit/releases/download/v${VERSION}/slackpit-darwin-x64"
+                sha256 "${SHA_DARWIN_X64}"
+              end
+            end
+
+            on_linux do
+              url "https://github.com/moritzbeck93/slackpit/releases/download/v${VERSION}/slackpit-linux-x64"
+              sha256 "${SHA_LINUX_X64}"
+            end
+
+            def install
+              binary = Dir["slackpit-*"].first
+              bin.install binary => "slackpit"
+            end
+
+            service do
+              run [opt_bin/"slackpit"]
+              keep_alive true
+              log_path var/"log/slackpit.log"
+              error_log_path var/"log/slackpit.log"
+            end
+
+            test do
+              assert_match "#{version}", shell_output("#{bin}/slackpit --version")
+            end
+          end
+          EOF
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Formula/slackpit.rb
+          git commit -m "slackpit ${VERSION}"
+          git push
