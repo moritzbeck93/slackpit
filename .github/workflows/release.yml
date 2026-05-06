@@ -15,8 +15,6 @@ jobs:
         include:
           - os: macos-latest
             target: darwin-arm64
-          - os: macos-13
-            target: darwin-x64
           - os: ubuntu-latest
             target: linux-x64
 
@@ -64,11 +62,9 @@ jobs:
           VERSION="${GITHUB_REF_NAME#v}"
 
           curl -sL "https://github.com/moritzbeck93/slackpit/releases/download/v${VERSION}/slackpit-darwin-arm64" -o /tmp/slackpit-darwin-arm64
-          curl -sL "https://github.com/moritzbeck93/slackpit/releases/download/v${VERSION}/slackpit-darwin-x64" -o /tmp/slackpit-darwin-x64
           curl -sL "https://github.com/moritzbeck93/slackpit/releases/download/v${VERSION}/slackpit-linux-x64" -o /tmp/slackpit-linux-x64
 
           SHA_DARWIN_ARM64=$(shasum -a 256 /tmp/slackpit-darwin-arm64 | cut -d' ' -f1)
-          SHA_DARWIN_X64=$(shasum -a 256 /tmp/slackpit-darwin-x64 | cut -d' ' -f1)
           SHA_LINUX_X64=$(shasum -a 256 /tmp/slackpit-linux-x64 | cut -d' ' -f1)
 
           cat > Formula/slackpit.rb << EOF
@@ -79,13 +75,8 @@ jobs:
             license "MIT"
 
             on_macos do
-              if Hardware::CPU.arm?
-                url "https://github.com/moritzbeck93/slackpit/releases/download/v${VERSION}/slackpit-darwin-arm64"
-                sha256 "${SHA_DARWIN_ARM64}"
-              else
-                url "https://github.com/moritzbeck93/slackpit/releases/download/v${VERSION}/slackpit-darwin-x64"
-                sha256 "${SHA_DARWIN_X64}"
-              end
+              url "https://github.com/moritzbeck93/slackpit/releases/download/v${VERSION}/slackpit-darwin-arm64"
+              sha256 "${SHA_DARWIN_ARM64}"
             end
 
             on_linux do
