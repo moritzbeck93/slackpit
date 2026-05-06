@@ -37,10 +37,6 @@ To run automatically in the background:
 brew services start slackpit
 ```
 
-### Download static binary
-
-Static binaries can be found on the [releases](https://github.com/moritzbeck93/slackpit/releases) page for macOS (ARM64, x64) and Linux (x64).
-
 ### Build from source
 
 ```bash
